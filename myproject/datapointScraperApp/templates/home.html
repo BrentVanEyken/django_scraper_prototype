@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Home - Data Aggregator{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <h1 class="display-4">Welcome, {{ user.username }}!</h1>
+    <p class="lead">You have successfully logged in to the Data Aggregator platform.</p>
+    <hr class="my-4">
+    <p>Use the navigation bar to manage datapoints, data groups, and organizations.</p>
+</div>
+{% endblock %}

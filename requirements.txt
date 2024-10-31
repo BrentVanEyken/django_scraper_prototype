@@ -1,1 +1,6 @@
 django
+playwright
+celery
+redis
+lxml
+python-decouple
