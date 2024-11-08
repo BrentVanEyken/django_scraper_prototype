@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+{% block content %}
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<h2>{{ datagroup.name }}</h2>
+
+{% if user.has_perm('datapointScraperApp.can_scrape_datagroup') %}
+    <form method="post" action="{% url 'scrape_datagroup' datagroup.id %}" onsubmit="return confirm('Are you sure you want to scrape this DataGroup?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">
+            Scrape This DataGroup
+        </button>
+    </form>
+{% endif %}
+
+{% endblock %}

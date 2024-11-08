@@ -8,11 +8,13 @@ class Organization(models.Model):
     Represents an organization that owns Datapoints and DataGroups.
     """
     name = models.CharField(max_length=255, unique=True)
-    
+
     class Meta:
         verbose_name = "Organization"
         verbose_name_plural = "Organizations"
-        ordering = ['name']
+        permissions = [
+            ("can_scrape_organisation", "Can scrape all Datapoints/Datagroups in an Organization"),
+        ]
     
     def __str__(self):
         return self.name
@@ -33,10 +35,12 @@ class DataGroup(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        verbose_name = "Data Group"
-        verbose_name_plural = "Data Groups"
-        ordering = ['name']
-    
+        verbose_name = "DataGroup"
+        verbose_name_plural = "DataGroups"
+        permissions = [
+            ("can_scrape_datagroup", "Can scrape a specific DataGroup"),
+        ]
+
     def __str__(self):
         return self.name
 
@@ -45,11 +49,16 @@ class Datapoint(models.Model):
     Represents a single scraped data point.
     Now associated with an Organization.
     """
+    STATUS_AUTO = 'AUTO'
+    STATUS_MANUAL = 'MANUAL'
+    STATUS_VERIFY = 'VERIFY'
+    STATUS_FIX = 'FIX'
+
     STATUS_CHOICES = [
-        ('AUTO', 'Automated'),
-        ('MANUAL', 'Manual'),
-        ('VERIFY', 'Verification Required'),
-        ('FIX', 'Fix Needed'),
+        (STATUS_AUTO, 'Automated'),
+        (STATUS_MANUAL, 'Manual'),
+        (STATUS_VERIFY, 'Verification Required'),
+        (STATUS_FIX, 'Fix Needed'),
     ]
 
     DATA_TYPE_CHOICES = [
@@ -70,7 +79,7 @@ class Datapoint(models.Model):
     current_unverified_data = models.TextField(blank=True, null=True)
     last_verified = models.DateTimeField(blank=True, null=True)
     last_updated = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='AUTO')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_AUTO)
     data_group = models.ForeignKey(
         'DataGroup',
         on_delete=models.SET_NULL,
@@ -90,6 +99,10 @@ class Datapoint(models.Model):
         verbose_name = "Datapoint"
         verbose_name_plural = "Datapoints"
         ordering = ['-created_at']
-    
+        permissions = [
+            ("can_scrape_datapoint", "Can scrape a specific Datapoint"),
+            ("can_scrape_all_datapoints", "Can scrape all Datapoints"),
+        ]
+
     def __str__(self):
         return f"{self.name} ({self.status})"

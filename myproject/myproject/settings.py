@@ -119,6 +119,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+STATIC_ROOT = os.path.join(BASE_DIR, config('STATIC_ROOT', default='staticfiles'))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -160,22 +164,13 @@ LOGGING = {
 }
 
 # Celery Configuration Options
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Adjust if using a different host or port
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Update if Redis is on a different host/port
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-CELERY_BEAT_SCHEDULE = {
-    'run-scraper-every-day': {
-        'task': 'myapp.tasks.run_scraper_task',
-        'schedule': 86400.0,  # Every 24 hours
-    },
-}
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
 
-LOGIN_REDIRECT_URL = 'home'  # Replace 'home' with your desired URL name
-LOGOUT_REDIRECT_URL = 'login'  # Redirect to login after logout
+LOGIN_REDIRECT_URL = 'home' 
+LOGOUT_REDIRECT_URL = 'login'
 
-# Static files (CSS, JavaScript, Images)
-
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
-STATIC_ROOT = os.path.join(BASE_DIR, config('STATIC_ROOT', default='staticfiles'))

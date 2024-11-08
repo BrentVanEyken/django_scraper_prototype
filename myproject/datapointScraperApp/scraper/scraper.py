@@ -1,4 +1,4 @@
-# myapp/scraper/scraper.py
+# datapointScraperApp/scraper/scraper.py
 
 from datetime import timezone
 from typing import Optional
@@ -16,12 +16,12 @@ def get_page(url: str, wait_xpath: Optional[str] = None) -> html.HtmlElement:
             browser = p.chromium.launch(headless=True)
             context = browser.new_context()
             page = context.new_page()
-            page.goto(url, timeout=30000)
+            page.goto(url, timeout=10000)
 
             if wait_xpath:
-                page.wait_for_selector(f'xpath={wait_xpath}', timeout=15000)
+                page.wait_for_selector(f'xpath={wait_xpath}', timeout=5000)
             else:
-                page.wait_for_load_state('networkidle', timeout=15000)
+                page.wait_for_load_state('networkidle', timeout=5000)
 
             content = page.content()
             tree = html.fromstring(content)
@@ -69,6 +69,9 @@ def scrape_content_html(url: str, xpath: str) -> Optional[str]:
         raise RuntimeError(f"Error during scraping: {e}")
 
 def update_datapoint(datapoint: Datapoint):
+    """
+    Scrapes data based on the Datapoint's data_type and updates fields accordingly.
+    """
     try:
         if datapoint.data_type.upper() == 'HTML':
             scraped_data = scrape_content_html(datapoint.url, datapoint.xpath)
@@ -76,15 +79,26 @@ def update_datapoint(datapoint: Datapoint):
             scraped_data = scrape_content_txt(datapoint.url, datapoint.xpath)
 
         if scraped_data:
-            if datapoint.status == 'AUTO':
-                datapoint.current_unverified_data = scraped_data
-                datapoint.last_updated = timezone.now()
-                datapoint.save()
-                logger.info(f"Updated Datapoint ID: {datapoint.id} with new data.")
-            elif datapoint.status in ['MANUAL', 'VERIFY', 'FIX']:
-                logger.info(f"Datapoint ID: {datapoint.id} has status {datapoint.status}. Skipping update.")
+            datapoint.current_unverified_data = scraped_data
+            datapoint.last_updated = timezone.now()
+
+            if datapoint.status == Datapoint.STATUS_AUTO:
+                datapoint.status = Datapoint.STATUS_VERIFY
+
+            datapoint.save()
+            logger.info(f"Updated Datapoint ID: {datapoint.id} with new data.")
         else:
             logger.warning(f"No data scraped for Datapoint ID: {datapoint.id}.")
-
+            # Optionally, set status to 'FIX' if scraping fails silently
+            if datapoint.status == Datapoint.STATUS_AUTO:
+                datapoint.status = Datapoint.STATUS_FIX
+                datapoint.save(update_fields=['status'])
+                logger.debug(f"Set status to 'FIX' for Datapoint ID: {datapoint.id} due to no data.")
     except Exception as e:
         logger.error(f"Error updating Datapoint ID: {datapoint.id} - {e}")
+        # Optionally, set status to 'FIX' to indicate an issue
+        if datapoint.status == Datapoint.STATUS_AUTO:
+            datapoint.status = Datapoint.STATUS_FIX
+            datapoint.save(update_fields=['status'])
+            logger.debug(f"Set status to 'FIX' for Datapoint ID: {datapoint.id} due to exception.")
+        raise

@@ -2,8 +2,18 @@ body {
     padding-top: 70px;
 }
 
+main{
+    min-height:100vh;
+}
+
 footer {
-    position: fixed;
+    position: fixed; 
     bottom: 0;
     width: 100%;
+}
+
+nav{
+    position:fixed !important;
+    top:0;
+    width:100%;
 }

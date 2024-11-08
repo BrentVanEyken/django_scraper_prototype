@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load form_tags %}
+{% block title %}Dashboard - Data Aggregator{% endblock %}
+
+{% block content %}
+{% comment %} 
+<h2 class="mb-4">Overview Dashboard</h2>
+
+<!-- Chart Container -->
+<div class="row">
+    <div class="col-md-12">
+        <canvas id="datapointsChart"></canvas>
+    </div>
+</div> 
+{% endcomment %}
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Scrape All Datapoints Button -->
+{% if perms.datapointScraperApp.can_scrape_all_datapoints %}
+    <form method="post" action="{% url 'scrape_all_datapoints' %}" onsubmit="return confirm('Are you sure you want to scrape all Datapoints?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+            Scrape All Datapoints
+        </button>
+    </form>
+{% endif %}
+
+<hr>
+<h3 class="mt-5">Datapoints by Status and Organization</h3>
+<table class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th>Organization</th>
+            {% for status, display in status_choices %}
+                <th>{{ display }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for org in organizations %}
+            <tr>
+                <td>{{ org.name }}</td>
+                {% for status, display in status_choices %}
+                    <td>{{ org|get_status_count:status }}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const ctx = document.getElementById('datapointsChart').getContext('2d');
+    const datapointsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels|safe }},
+            datasets: [
+                {
+                    label: 'AUTO',
+                    data: {{ auto_counts|safe }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                },
+                {
+                    label: 'MANUAL',
+                    data: {{ manual_counts|safe }},
+                    backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                },
+                {
+                    label: 'VERIFY',
+                    data: {{ verify_counts|safe }},
+                    backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                },
+                {
+                    label: 'FIX',
+                    data: {{ fix_counts|safe }},
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Number of Datapoints by Status per Organization'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                legend: {
+                    position: 'top',
+                },
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: 'Organizations'
+                    }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Datapoints'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
