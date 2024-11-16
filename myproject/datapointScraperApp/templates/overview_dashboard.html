@@ -3,31 +3,17 @@
 {% block title %}Dashboard - Data Aggregator{% endblock %}
 
 {% block content %}
-{% comment %} 
-<h2 class="mb-4">Overview Dashboard</h2>
 
-<!-- Chart Container -->
-<div class="row">
-    <div class="col-md-12">
-        <canvas id="datapointsChart"></canvas>
-    </div>
-</div> 
-{% endcomment %}
-
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    {% endfor %}
-{% endif %}
+<!-- Loading Indicator Overlay -->
+<div id="loading-overlay" style="display: none;">
+    <div class="spinner"></div>
+</div>
 
 <!-- Scrape All Datapoints Button -->
 {% if perms.datapointScraperApp.can_scrape_all_datapoints %}
-    <form method="post" action="{% url 'scrape_all_datapoints' %}" onsubmit="return confirm('Are you sure you want to scrape all Datapoints?');">
+    <form id="scrape-all-form" method="post" action="{% url 'scrape_all_datapoints' %}">
         {% csrf_token %}
-        <button type="submit" class="btn btn-danger">
+        <button type="submit" class="btn btn-primary" id="scrape-all-button">
             Scrape All Datapoints
         </button>
     </form>

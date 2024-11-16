@@ -4,3 +4,5 @@ celery
 redis
 lxml
 python-decouple
+python-dotenv
+requests

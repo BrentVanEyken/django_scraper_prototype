@@ -1,3 +1,6 @@
+import json
+from django.conf import settings
+import requests
 from celery import shared_task
 from django.utils import timezone
 from .models import Datapoint, DataGroup, Organization
@@ -94,21 +97,60 @@ def scrape_organisation_task(organisation_id):
     except Exception as e:
         logger.error(f"Error scraping Organization ID {organisation_id}: {e}")
 
-@shared_task
-def scrape_all_datapoints_task():
-    """
-    Celery task to scrape all Datapoints in the system.
-    """
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def scrape_all_datapoints_task(self, tasks):
+    payload = {"tasks": tasks}
+    API_TOKEN = settings.CELERY_BROKER_URL.split('@')[0].split(':')[1]  # Extract password if set
+    headers = {
+        "Authorization": f"Bearer {API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
     try:
-        datapoints = Datapoint.objects.filter(status=Datapoint.STATUS_AUTO)
-        
-        if not datapoints.exists():
-            logger.warning("No Datapoints with status 'AUTO' found to scrape.")
-            return
-        
-        for datapoint in datapoints:
-            scrape_datapoint_task.delay(datapoint.id)
-        
-        logger.info("Enqueued scraping tasks for all Datapoints with status 'AUTO'.")
-    except Exception as e:
-        logger.error(f"Error scraping all Datapoints: {e}")
+        response = requests.post(
+            "http://127.0.0.1:8001/scrape/batch",
+            json=payload,
+            headers=headers,
+            timeout=60
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        logger.error(f"Request failed: {exc}")
+        raise self.retry(exc=exc)
+
+    try:
+        response_data = response.json()
+    except json.JSONDecodeError as exc:
+        logger.error(f"Invalid JSON response: {exc}")
+        raise self.retry(exc=exc)
+
+    results = response_data.get("results", [])
+
+    for result in results:
+        url = result.get("url")
+        xpath = result.get("xpath")
+        scraped_data = result.get("scraped_data")
+        status = result.get("status")
+        error = result.get("error")
+
+        try:
+            dp = Datapoint.objects.get(url=url, xpath=xpath)
+
+            if status == "success":
+                if dp.current_verified_data is not None and dp.current_verified_data == scraped_data:
+                    dp.status = "AUTO"
+                    logger.info(f"No changes detected for Datapoint: {dp.name}. Status set to AUTO.")
+                else:
+                    dp.status = "VERIFY"
+                    logger.info(f"Changes detected for Datapoint: {dp.name}. Status set to VERIFY for user verification.")
+
+                dp.current_unverified_data = scraped_data
+                dp.last_updated = timezone.now()
+                dp.save()
+            else:
+                dp.status = "FIX"
+                dp.last_updated = timezone.now()
+                dp.save()
+                logger.error(f"Failed to scrape Datapoint: {dp.name}. Error: {error}")
+        except Datapoint.DoesNotExist:
+            logger.error(f"Datapoint with URL {url} and XPath {xpath} does not exist.")
