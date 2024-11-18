@@ -31,3 +31,27 @@ class DatapointForm(forms.ModelForm):
             'organization': forms.Select(attrs={'class': 'form-select'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
         }
+
+class TestXPathForm(forms.Form):
+    DATA_TYPE_CHOICES = [
+        ('TXT', 'Text (TXT)'),
+        ('HTML', 'HTML (HTML)'),
+    ]
+
+    url = forms.URLField(
+        label='URL',
+        widget=forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com'}),
+        required=True
+    )
+    xpath = forms.CharField(
+        label='XPath Expression',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '//h1'}),
+        required=True
+    )
+    data_type = forms.ChoiceField(
+        label='Data Type',
+        choices=DATA_TYPE_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        required=True,
+        initial='TXT'
+    )

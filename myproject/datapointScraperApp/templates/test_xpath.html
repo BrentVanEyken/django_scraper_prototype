@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Test XPath</h2>
+    <p>Use this tool to test your XPath expressions against a specific URL.</p>
+
+    <!-- Test XPath Form -->
+    <form method="POST" action="{% url 'test_xpath' %}">
+        {% csrf_token %}
+        <div class="mb-3">
+            {{ form.url.label_tag }}
+            {{ form.url }}
+            {% if form.url.errors %}
+                <div class="text-danger">
+                    {{ form.url.errors }}
+                </div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            {{ form.xpath.label_tag }}
+            {{ form.xpath }}
+            {% if form.xpath.errors %}
+                <div class="text-danger">
+                    {{ form.xpath.errors }}
+                </div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            {{ form.data_type.label_tag }}
+            {{ form.data_type }}
+            {% if form.data_type.errors %}
+                <div class="text-danger">
+                    {{ form.data_type.errors }}
+                </div>
+            {% endif %}
+        </div>
+        <button type="submit" class="btn btn-primary">Test XPath</button>
+    </form>
+
+    <!-- Display Scraped Data -->
+    {% if scraped_data %}
+        <div class="mt-5">
+            <h4>Scraped Data:</h4>
+            {% if data_type == 'TXT' %}
+                <p>{{ scraped_data }}</p>
+            {% elif data_type == 'HTML' %}
+                <div class="border p-3">
+                    {{ scraped_data|safe }}
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -15,7 +15,7 @@ import requests
 import os
 import json
 
-from .forms import RegisterForm, DatapointForm
+from .forms import RegisterForm, DatapointForm, TestXPathForm
 from .models import Datapoint, Organization, DataGroup
 from django.utils import timezone
 
@@ -275,7 +275,7 @@ class ScrapeAllDatapointsView(LoginRequiredMixin, PermissionRequiredMixin, View)
         logger.debug(f"Scraping payload: {json.dumps(payload)}")
 
         # Retrieve the API token from Django settings
-        API_TOKEN = settings.SCRAPER_API_TOKEN  # Ensure this is set in settings.py and loaded from .env
+        API_TOKEN = settings.SCRAPER_API_TOKEN
 
         headers = {
             "Authorization": f"Bearer {API_TOKEN}",
@@ -345,4 +345,106 @@ class ScrapeAllDatapointsView(LoginRequiredMixin, PermissionRequiredMixin, View)
             logger.error("JSONDecodeError: Invalid response from FastAPI.")
             messages.error(request, "Invalid response from the scraper service.")
 
-        return redirect('home')  # Adjust as per your URL naming
+        return redirect('home')
+    
+
+class TestXPathView(View):
+    """
+    View to allow users to test an XPath by providing a URL and XPath expression.
+    """
+    template_name = 'test_xpath.html'
+
+    def get(self, request):
+        """
+        Handle GET requests: display the form.
+        """
+        form = TestXPathForm()
+        return render(request, self.template_name, {'form': form})
+
+    def post(self, request):
+        """
+        Handle POST requests: process the form and display results.
+        """
+        form = TestXPathForm(request.POST)
+        if form.is_valid():
+            url = form.cleaned_data['url']
+            xpath = form.cleaned_data['xpath']
+            data_type = form.cleaned_data['data_type']
+
+            # Prepare the scraping task
+            task = {
+                "tasks": [
+                    {
+                        "url": url,
+                        "xpath": xpath,
+                        "data_type": data_type
+                    }
+                ]
+            }
+
+            # Log the scraping task
+            logger.debug(f"TestXPath Scraping task: {json.dumps(task)}")
+
+            # Retrieve the API token from Django settings
+            API_TOKEN = settings.SCRAPER_API_TOKEN
+
+            headers = {
+                "Authorization": f"Bearer {API_TOKEN}",
+                "Content-Type": "application/json"
+            }
+
+            try:
+                # Send POST request to FastAPI scraper
+                response = requests.post(
+                    "http://127.0.0.1:8001/scrape/batch",  # FastAPI batch endpoint on port 8001
+                    json=task,
+                    headers=headers,
+                    timeout=60  # Adjust timeout as needed
+                )
+
+                logger.info(f"FastAPI Response Status Code: {response.status_code}")
+                logger.info(f"FastAPI Response Content: {response.text}")
+
+                if response.status_code == 200:
+                    response_data = response.json()
+                    results = response_data.get("results", [])
+
+                    if not results:
+                        messages.warning(request, "No results returned from the scraper.")
+                        return render(request, self.template_name, {'form': form})
+
+                    result = results[0]  # Since we're testing a single task
+
+                    if result.get("status") == "success":
+                        scraped_data = result.get("scraped_data")
+                        return render(request, self.template_name, {
+                            'form': form,
+                            'scraped_data': scraped_data,
+                            'success': True
+                        })
+                    else:
+                        error = result.get("error", "Unknown error occurred during scraping.")
+                        messages.error(request, f"Scraping failed: {error}")
+                        return render(request, self.template_name, {'form': form})
+                else:
+                    # Attempt to extract error message from FastAPI response
+                    try:
+                        error_detail = response.json().get("detail", "Unknown error")
+                    except json.JSONDecodeError:
+                        error_detail = response.text  # Capture raw response
+                    logger.error(f"FastAPI Error Response: {response.text}")
+                    messages.error(request, f"Failed to initiate scraping: {error_detail}")
+                    return render(request, self.template_name, {'form': form})
+
+            except requests.exceptions.RequestException as e:
+                logger.error(f"RequestException: {e}")
+                messages.error(request, f"Error connecting to the scraper service: {e}")
+                return render(request, self.template_name, {'form': form})
+            except json.JSONDecodeError:
+                logger.error("JSONDecodeError: Invalid response from FastAPI.")
+                messages.error(request, "Invalid response from the scraper service.")
+                return render(request, self.template_name, {'form': form})
+        else:
+            # Form is invalid
+            messages.error(request, "Please correct the errors below.")
+            return render(request, self.template_name, {'form': form})

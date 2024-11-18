@@ -13,4 +13,5 @@ urlpatterns = [
     path('datagroups/<int:datagroup_id>/scrape/', views.ScrapeDataGroupView.as_view(), name='scrape_datagroup'),
     path('organisations/<int:organisation_id>/scrape/', views.ScrapeOrganizationView.as_view(), name='scrape_organisation'),
     path('datapoints/scrape_all/', views.ScrapeAllDatapointsView.as_view(), name='scrape_all_datapoints'),
+    path('test-xpath/', views.TestXPathView.as_view(), name='test_xpath')
 ]
