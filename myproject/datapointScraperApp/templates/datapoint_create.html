@@ -51,6 +51,16 @@
                             </div>
                         {% endif %}
                     </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.current_verified_data.id_for_label }}" class="form-label">Verified Data</label>
+                        {{ form.current_verified_data }}
+                        {% if form.current_verified_data.errors %}
+                            <div class="text-danger">
+                                {{ form.current_verified_data.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
                     
                     <div class="mb-3">
                         <label for="{{ form.data_group.id_for_label }}" class="form-label">Data Group</label>

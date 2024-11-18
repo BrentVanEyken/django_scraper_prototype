@@ -1,55 +1,79 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-5">
-    <h2>Test XPath</h2>
-    <p>Use this tool to test your XPath expressions against a specific URL.</p>
+<div class="row justify-content-center mt-5">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">Test XPath</h3>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Use this tool to test your XPath expressions against a specific URL.</p>
 
-    <!-- Test XPath Form -->
-    <form method="POST" action="{% url 'test_xpath' %}">
-        {% csrf_token %}
-        <div class="mb-3">
-            {{ form.url.label_tag }}
-            {{ form.url }}
-            {% if form.url.errors %}
-                <div class="text-danger">
-                    {{ form.url.errors }}
-                </div>
-            {% endif %}
-        </div>
-        <div class="mb-3">
-            {{ form.xpath.label_tag }}
-            {{ form.xpath }}
-            {% if form.xpath.errors %}
-                <div class="text-danger">
-                    {{ form.xpath.errors }}
-                </div>
-            {% endif %}
-        </div>
-        <div class="mb-3">
-            {{ form.data_type.label_tag }}
-            {{ form.data_type }}
-            {% if form.data_type.errors %}
-                <div class="text-danger">
-                    {{ form.data_type.errors }}
-                </div>
-            {% endif %}
-        </div>
-        <button type="submit" class="btn btn-primary">Test XPath</button>
-    </form>
+                <!-- Test XPath Form -->
+                <form method="POST" action="{% url 'test_xpath' %}" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        {{ form.url.label_tag }}
+                        {{ form.url }}
+                        {% if form.url.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.url.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.xpath.label_tag }}
+                        {{ form.xpath }}
+                        {% if form.xpath.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.xpath.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-4">
+                        {{ form.data_type.label_tag }}
+                        {{ form.data_type }}
+                        {% if form.data_type.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.data_type.errors }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Choose the type of data you want to extract.</div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Test XPath</button>
+                </form>
 
-    <!-- Display Scraped Data -->
-    {% if scraped_data %}
-        <div class="mt-5">
-            <h4>Scraped Data:</h4>
-            {% if data_type == 'TXT' %}
-                <p>{{ scraped_data }}</p>
-            {% elif data_type == 'HTML' %}
-                <div class="border p-3">
-                    {{ scraped_data|safe }}
-                </div>
-            {% endif %}
+                <!-- Display Scraped Data -->
+                {% if scraped_data %}
+                    <hr>
+                    <div class="mt-4">
+                        <h4>Scraped Data:</h4>
+                        {% if data_type == 'TXT' %}
+                            <div class="alert alert-secondary d-flex justify-content-between align-items-center" role="alert">
+                                <span>{{ scraped_data }}</span>
+                            </div>
+                        {% elif data_type == 'HTML' %}
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="border rounded p-3 bg-light w-100">
+                                    <pre>{{ scraped_data }}</pre>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-secondary d-flex justify-content-between align-items-center" role="alert">
+                                <span>{{ scraped_data }}</span>
+                            </div>
+                        {% endif %}
+                        <!-- Create Datapoint Button -->
+                        <div class="mt-4">
+                            <a href="{% url 'datapoint-create' %}?url={{ form.url.value|urlencode }}&xpath={{ form.xpath.value|urlencode }}&scrape_result={{ scraped_data|urlencode }}&data_type={{ form.data_type.value }}" class="btn btn-primary w-100">
+                                Create Datapoint with This Data
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
         </div>
-    {% endif %}
+    </div>
 </div>
 {% endblock %}

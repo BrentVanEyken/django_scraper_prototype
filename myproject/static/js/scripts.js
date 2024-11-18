@@ -12,3 +12,14 @@ document.addEventListener('DOMContentLoaded', function() {
         scrapeButton.innerText = 'Scraping...';
     });
 });
+
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show success toast or alert
+        alert('Scraped data copied to clipboard!');
+    }, function(err) {
+        // Show error toast or alert
+        alert('Failed to copy: ' + err);
+    });
+}

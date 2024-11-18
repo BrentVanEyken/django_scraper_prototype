@@ -1,4 +1,6 @@
 import logging
+from django.forms import ValidationError
+from django.core.validators import URLValidator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import views as auth_views
@@ -55,6 +57,44 @@ class DatapointCreateView(LoginRequiredMixin, CreateView):
     form_class = DatapointForm
     template_name = 'datapoint_create.html' 
     success_url = reverse_lazy('datapoint-list')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        # Retrieve data from GET parameters
+        url = self.request.GET.get('url', '').strip()
+        xpath = self.request.GET.get('xpath', '').strip()
+        scrape_result = self.request.GET.get('scrape_result', '').strip()
+        data_type = self.request.GET.get('data_type', 'TXT').strip()
+
+        # Basic validation for URL
+        if url:
+            validator = URLValidator()
+            try:
+                validator(url)
+                initial['url'] = url
+            except ValidationError:
+                # Optionally, handle invalid URL
+                pass
+
+        if xpath:
+            initial['xpath'] = xpath
+
+        if scrape_result:
+            initial['current_verified_data'] = scrape_result
+
+        # Map 'data_type' from TestXPathForm to DatapointForm's 'data_type'
+        # Ensure that the choices match or are correctly mapped
+        # Assuming 'TXT' maps to 'STRING' and 'HTML' maps to 'HTML' (or another appropriate mapping)
+        data_type_mapping = {
+            'TXT': 'STRING',
+            'HTML': 'HTML',
+        }
+        mapped_data_type = data_type_mapping.get(data_type.upper(), 'STRING')  # Default to 'STRING' if not found
+        initial['data_type'] = mapped_data_type
+
+        return initial
+
+        return initial
 
     def form_valid(self, form):
         """
@@ -386,7 +426,7 @@ class TestXPathView(View):
             logger.debug(f"TestXPath Scraping task: {json.dumps(task)}")
 
             # Retrieve the API token from Django settings
-            API_TOKEN = settings.SCRAPER_API_TOKEN
+            API_TOKEN = settings.SCRAPER_API_TOKEN  # Ensure this is set in settings.py and loaded from .env
 
             headers = {
                 "Authorization": f"Bearer {API_TOKEN}",
@@ -406,7 +446,14 @@ class TestXPathView(View):
                 logger.info(f"FastAPI Response Content: {response.text}")
 
                 if response.status_code == 200:
-                    response_data = response.json()
+                    try:
+                        response_data = response.json()
+                        logger.debug(f"Parsed JSON Response: {json.dumps(response_data)}")
+                    except json.JSONDecodeError as e:
+                        logger.error(f"JSONDecodeError: {e}")
+                        messages.error(request, "Received invalid JSON response from the scraper service.")
+                        return render(request, self.template_name, {'form': form})
+
                     results = response_data.get("results", [])
 
                     if not results:
@@ -417,13 +464,21 @@ class TestXPathView(View):
 
                     if result.get("status") == "success":
                         scraped_data = result.get("scraped_data")
-                        return render(request, self.template_name, {
-                            'form': form,
-                            'scraped_data': scraped_data,
-                            'success': True
-                        })
+                        if scraped_data:
+                            logger.info(f"Scraped Data: {scraped_data}")
+                            return render(request, self.template_name, {
+                                'form': form,
+                                'scraped_data': scraped_data,
+                                'data_type': data_type,  # Ensure this is included
+                                'success': True
+                            })
+                        else:
+                            logger.warning("Scraped data is empty.")
+                            messages.warning(request, "Scraping succeeded but no data was found with the provided XPath.")
+                            return render(request, self.template_name, {'form': form})
                     else:
                         error = result.get("error", "Unknown error occurred during scraping.")
+                        logger.error(f"Scraping failed: {error}")
                         messages.error(request, f"Scraping failed: {error}")
                         return render(request, self.template_name, {'form': form})
                 else:
