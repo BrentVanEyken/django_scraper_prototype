@@ -76,6 +76,7 @@ nav {
 
 /* Prevent panels from shrinking below a minimum width */
 #filters-panel, #table-panel {
+    width:100%;
     min-width: 200px;
     overflow: auto;
 }
@@ -118,4 +119,26 @@ nav {
 
 #datapoint_edit_form{
     margin-bottom:1rem;
+}
+
+#datapoint_list_container{
+    max-width:100%;
+}
+
+#action_buttons_column{
+    text-align:center;
+}
+
+#action_buttons_column a, #action_buttons_column button{
+    width:6rem;
+    margin-top:5px;
+}
+
+#datapoints-table th{
+    overflow:hidden;
+}
+
+#datapoints-table td{
+    vertical-align: middle;
+    text-align:center;
 }

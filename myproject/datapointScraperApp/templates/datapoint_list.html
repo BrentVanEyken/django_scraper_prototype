@@ -5,7 +5,7 @@
 {% block title %}Datapoint List - Data Aggregator{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
+<div class="container mt-5" id="datapoint_list_container">
     <!-- Loading Overlay -->
     <div id="loading-overlay" style="display: none;">
         <div class="spinner"></div>
@@ -99,7 +99,7 @@
                                 <td>{{ datapoint.current_verified_data }}</td>
                                 <td>{{ datapoint.get_status_display }}</td>
                                 <td>{{ datapoint.last_updated|date:"Y-m-d H:i" }}</td>
-                                <td>
+                                <td id="action_buttons_column">
                                     <!-- Detail Button -->
                                     <a href="{% url 'datapoint-detail' datapoint.id %}" class="btn btn-sm btn-info me-1" title="View Details">
                                         <i class="bi bi-eye"></i> Detail
