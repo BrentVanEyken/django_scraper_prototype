@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from django.forms import ValidationError
 from django.core.validators import URLValidator
@@ -51,6 +52,53 @@ def register(request):
     return render(request, 'registration/register.html', {'form': form, 'current_year': current_year})
 
 
+def datapoint_detail(request, pk):
+    """
+    Displays detailed information about a specific datapoint.
+    """
+    datapoint = get_object_or_404(Datapoint, pk=pk)
+    return render(request, 'datapoint_detail.html', {'datapoint': datapoint})
+
+def datapoint_edit(request, pk):
+    """
+    Allows editing of a specific datapoint.
+    """
+    datapoint = get_object_or_404(Datapoint, pk=pk)
+    if request.method == 'POST':
+        form = DatapointForm(request.POST, instance=datapoint)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Datapoint updated successfully.')
+            return redirect('datapoint-list')
+    else:
+        form = DatapointForm(instance=datapoint)
+    return render(request, 'datapoint_edit.html', {'form': form, 'datapoint': datapoint})
+
+def datapoint_verify(request, pk):
+    """
+    Verifies a datapoint by updating its status to 'VERIFIED'.
+    """
+    datapoint = get_object_or_404(Datapoint, pk=pk)
+    if request.method == 'POST':
+        datapoint.status = 'AUTO'
+        datapoint.last_verified = timezone.now()
+        datapoint.save()
+        messages.success(request, 'Datapoint verified successfully.')
+        return redirect('datapoint-list')
+    return render(request, 'datapoint_verify.html', {'datapoint': datapoint})
+
+def datapoint_delete(request, pk):
+    datapoint = get_object_or_404(Datapoint, pk=pk)
+    if request.method == 'POST':
+        datapoint.delete()
+        return redirect('datapoint-list')
+    return render(request, 'datapoint_confirm_delete.html', {'datapoint': datapoint})
+
+def datapoint_revert(request, pk):
+    datapoint = get_object_or_404(Datapoint, pk=pk)
+    # Implement revert logic here
+    return redirect('datapoint-list')
+
 
 class DatapointCreateView(LoginRequiredMixin, CreateView):
     model = Datapoint
@@ -103,29 +151,35 @@ class DatapointCreateView(LoginRequiredMixin, CreateView):
         response = super().form_valid(form)
         return response
 
-class DatapointListView(LoginRequiredMixin, ListView):
+class DatapointListView(ListView):
     model = Datapoint
     template_name = 'datapoint_list.html'
     context_object_name = 'datapoints'
-    paginate_by = 10  # Adjust as needed
-
-class DatapointDetailView(LoginRequiredMixin, DetailView):
-    model = Datapoint
-    template_name = 'datapoint_detail.html'
-    context_object_name = 'datapoint'
-
-class DatapointUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
-    model = Datapoint
-    form_class = DatapointForm
-    template_name = 'datapoint_update.html'
-    success_url = reverse_lazy('datapoint-list')
-    permission_required = 'datapointScraperApp.change_datapoint'
-
-class DatapointDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
-    model = Datapoint
-    template_name = 'datapoint_delete.html'
-    success_url = reverse_lazy('datapoint-list')
-    permission_required = 'datapointScraperApp.delete_datapoint'
+    paginate_by = 20  # Adjust as needed
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        organization_id = self.request.GET.get('organization')
+        status = self.request.GET.get('status')
+        
+        if organization_id:
+            queryset = queryset.filter(organization__id=organization_id)
+        
+        if status:
+            queryset = queryset.filter(status=status)
+        
+        return queryset.order_by('-created_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['organizations'] = Organization.objects.all()
+        context['status_choices'] = Datapoint.STATUS_CHOICES
+        # Preserve current filters in the context for template usage (e.g., in breadcrumbs)
+        context['current_filters'] = {
+            'organization': self.request.GET.get('organization', ''),
+            'status': self.request.GET.get('status', ''),
+        }
+        return context
 
 class OverviewDashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'overview_dashboard.html'

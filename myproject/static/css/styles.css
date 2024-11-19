@@ -1,21 +1,32 @@
 body {
-    padding-top: 70px;
+    padding-top: 70px; /* Height of the fixed navbar */
 }
 
-main{
-    min-height:100vh;
+main {
+    padding-top: 1rem;
+    min-height: calc(100vh - 130px); /* 70px (navbar) + 60px (footer) */
 }
 
 footer {
-    position: fixed; 
-    bottom: 0;
+    position: relative; 
     width: 100%;
+    height: 60px; /* Fixed height for the footer */
 }
 
-nav{
-    position:fixed !important;
-    top:0;
-    width:100%;
+nav {
+    position: fixed !important;
+    top: 0;
+    width: 100%;
+    height: 70px; /* Fixed height for the navbar */
+    z-index: 9000;
+}
+
+#scrape-all-button{
+    margin-left:1rem;
+}
+
+.alert {
+    margin-top:1rem;
 }
 
 /* Loading Overlay Styles */
@@ -46,4 +57,65 @@ nav{
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Resizer Styles */
+#resizer {
+    width: 5px;
+    cursor: col-resize;
+    background-color: #f1f1f1;
+    height: 100%;
+}
+
+/* Ensure the row uses flexbox */
+.row {
+    display: flex;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Prevent panels from shrinking below a minimum width */
+#filters-panel, #table-panel {
+    min-width: 200px;
+    overflow: auto;
+}
+
+/* Adjust table-panel to take full width when filters are hidden */
+#filters-panel[style*="display: none;"] + #resizer + #table-panel {
+    flex: 1;
+}
+
+/* Styles for the column resize handle */
+.th-content {
+    position: relative;
+    padding-right: 10px; /* Space for the resize handle */
+}
+
+.resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    user-select: none;
+}
+
+/* Optional: Visual feedback when hovering over the resize handle */
+.th-content .resize-handle:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Optional: Visual feedback when dragging */
+.dragging {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.grip {
+    width: 100%;
+    height: 100%;
+}
+
+#datapoint_edit_form{
+    margin-bottom:1rem;
 }

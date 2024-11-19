@@ -1,12 +1,16 @@
 {% extends 'base.html' %}
 {% load form_tags %}
+{% load custom_filters %}
+{% load static %}
 {% block title %}Dashboard - Data Aggregator{% endblock %}
 
 {% block content %}
 
 <!-- Loading Indicator Overlay -->
 <div id="loading-overlay" style="display: none;">
-    <div class="spinner"></div>
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
 </div>
 
 <!-- Scrape All Datapoints Button -->
@@ -33,84 +37,27 @@
     <tbody>
         {% for org in organizations %}
             <tr>
-                <td>{{ org.name }}</td>
+                <td>
+                    <a href="{% url 'datapoint-list' %}?organization={{ org.id }}" class="text-decoration-none">
+                        {{ org.name }}
+                    </a>
+                </td>
                 {% for status, display in status_choices %}
-                    <td>{{ org|get_status_count:status }}</td>
+                    <td>
+                        {% with count=org|get_status_count:status %}
+                            {% if count > 0 %}
+                                <a href="{% url 'datapoint-list' %}?organization={{ org.id }}&status={{ status }}" class="text-decoration-none">
+                                    {{ count }}
+                                </a>
+                            {% else %}
+                                {{ count }}
+                            {% endif %}
+                        {% endwith %}
+                    </td>
                 {% endfor %}
             </tr>
         {% endfor %}
     </tbody>
 </table>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-    const ctx = document.getElementById('datapointsChart').getContext('2d');
-    const datapointsChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: {{ chart_labels|safe }},
-            datasets: [
-                {
-                    label: 'AUTO',
-                    data: {{ auto_counts|safe }},
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                },
-                {
-                    label: 'MANUAL',
-                    data: {{ manual_counts|safe }},
-                    backgroundColor: 'rgba(255, 159, 64, 0.6)',
-                },
-                {
-                    label: 'VERIFY',
-                    data: {{ verify_counts|safe }},
-                    backgroundColor: 'rgba(153, 102, 255, 0.6)',
-                },
-                {
-                    label: 'FIX',
-                    data: {{ fix_counts|safe }},
-                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
-                },
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Number of Datapoints by Status per Organization'
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                legend: {
-                    position: 'top',
-                },
-            },
-            interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
-            },
-            scales: {
-                x: {
-                    stacked: true,
-                    title: {
-                        display: true,
-                        text: 'Organizations'
-                    }
-                },
-                y: {
-                    stacked: true,
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Number of Datapoints'
-                    }
-                }
-            }
-        }
-    });
-</script>
 {% endblock %}

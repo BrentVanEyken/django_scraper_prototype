@@ -1,47 +1,45 @@
 {% extends 'base.html' %}
-{% block title %}{{ datapoint.name }} - Data Aggregator{% endblock %}
+{% load static %}
+{% block title %}Datapoint Detail - {{ datapoint.name }}{% endblock %}
 
 {% block content %}
-
-{% if messages %}
-{% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="container mt-5">
+    <h2>Datapoint Detail: {{ datapoint.name }}</h2>
+    <div class="card mt-4">
+        <div class="card-header">
+            <strong>Details</strong>
+        </div>
+        <div class="card-body">
+            <p><strong>Name:</strong> {{ datapoint.name }}</p>
+            <p><strong>Organization:</strong> {{ datapoint.organization.name }}</p>
+            <p><strong>Data Group:</strong> 
+                {% if datapoint.data_group %}
+                    {{ datapoint.data_group.name }}
+                {% else %}
+                    N/A
+                {% endif %}
+            </p>
+            <p><strong>URL:</strong> <a href="{{ datapoint.url }}" target="_blank">{{ datapoint.url }}</a></p>
+            <p><strong>XPath:</strong> {{ datapoint.xpath }}</p>
+            <p><strong>Data Type:</strong> {{ datapoint.get_data_type_display }}</p>
+            <p><strong>Verified Data:</strong> {{ datapoint.current_verified_data }}</p>
+            <p><strong>Status:</strong> {{ datapoint.get_status_display }}</p>
+            <p><strong>Last Verified:</strong> 
+                {% if datapoint.last_verified %}
+                    {{ datapoint.last_verified|date:"Y-m-d H:i" }}
+                {% else %}
+                    N/A
+                {% endif %}
+            </p>
+            <p><strong>Last Updated:</strong> {{ datapoint.last_updated|date:"Y-m-d H:i" }}</p>
+        </div>
     </div>
-{% endfor %}
-{% endif %}
-
-<div class="card">
-    <div class="card-header">
-        <h3>{{ datapoint.name }}</h3>
-    </div>
-    <div class="card-body">
-        <p><strong>Status:</strong> {{ datapoint.get_status_display }}</p>
-        <p><strong>URL:</strong> <a href="{{ datapoint.url }}" target="_blank">{{ datapoint.url }}</a></p>
-        <p><strong>XPath:</strong> {{ datapoint.xpath }}</p>
-        <p><strong>Data Type:</strong> {{ datapoint.get_data_type_display }}</p>
-        <p><strong>Organization:</strong> {{ datapoint.organization.name }}</p>
-        <p><strong>Data Group:</strong> {{ datapoint.data_group.name if datapoint.data_group else 'N/A' }}</p>
-        <p><strong>Previously Verified Data:</strong> {{ datapoint.previously_verified_data }}</p>
-        <p><strong>Current Verified Data:</strong> {{ datapoint.current_verified_data }}</p>
-        <p><strong>Current Unverified Data:</strong> {{ datapoint.current_unverified_data }}</p>
-        <p><strong>Last Verified:</strong> {{ datapoint.last_verified }}</p>
-        <p><strong>Last Updated:</strong> {{ datapoint.last_updated }}</p>
-
-        {% if user.has_perm('datapointScraperApp.can_scrape_datapoint') %}
-        <form method="post" action="{% url 'scrape_datapoint' datapoint.id %}" onsubmit="return confirm('Are you sure you want to scrape this Datapoint?');">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-primary" {% if datapoint.status != 'AUTO' %}disabled{% endif %}>
-                Scrape This Datapoint
-            </button>
-        </form>
-    {% endif %}
-    </div>
-    <div class="card-footer">
-        <a href="{% url 'datapoint-update' datapoint.pk %}" class="btn btn-warning">Edit</a>
-        <a href="{% url 'datapoint-delete' datapoint.pk %}" class="btn btn-danger">Delete</a>
-        <a href="{% url 'datapoint-list' %}" class="btn btn-secondary">Back to List</a>
-    </div>
+    
+    <a href="{% url 'datapoint-edit' datapoint.id %}" class="btn btn-primary mt-3">
+        <i class="bi bi-pencil-square"></i> Edit
+    </a>
+    <a href="{% url 'datapoint-list' %}" class="btn btn-secondary mt-3">
+        <i class="bi bi-arrow-left"></i> Back to List
+    </a>
 </div>
 {% endblock %}

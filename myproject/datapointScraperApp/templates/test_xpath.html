@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<!-- Loading Indicator Overlay -->
+<div id="loading-overlay" style="display: none;">
+    <div class="spinner"></div>
+</div>
+
 <div class="row justify-content-center mt-5">
     <div class="col-md-8">
         <div class="card shadow-sm">
@@ -11,7 +17,7 @@
                 <p class="card-text">Use this tool to test your XPath expressions against a specific URL.</p>
 
                 <!-- Test XPath Form -->
-                <form method="POST" action="{% url 'test_xpath' %}" novalidate>
+                <form method="POST" action="{% url 'test_xpath' %}" id="test-xpath-form" novalidate>
                     {% csrf_token %}
                     <div class="mb-3">
                         {{ form.url.label_tag }}
@@ -41,7 +47,7 @@
                         {% endif %}
                         <div class="form-text">Choose the type of data you want to extract.</div>
                     </div>
-                    <button type="submit" class="btn btn-success w-100">Test XPath</button>
+                    <button id="test-xpath-button" type="submit" class="btn btn-primary w-100">Test XPath</button>
                 </form>
 
                 <!-- Display Scraped Data -->
@@ -66,7 +72,7 @@
                         {% endif %}
                         <!-- Create Datapoint Button -->
                         <div class="mt-4">
-                            <a href="{% url 'datapoint-create' %}?url={{ form.url.value|urlencode }}&xpath={{ form.xpath.value|urlencode }}&scrape_result={{ scraped_data|urlencode }}&data_type={{ form.data_type.value }}" class="btn btn-primary w-100">
+                            <a href="{% url 'datapoint-create' %}?url={{ form.url.value|urlencode }}&xpath={{ form.xpath.value|urlencode }}&scrape_result={{ scraped_data|urlencode }}&data_type={{ form.data_type.value }}" class="btn btn-success w-100">
                                 Create Datapoint with This Data
                             </a>
                         </div>
