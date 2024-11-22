@@ -113,6 +113,8 @@ def datapoint_verify(request, pk):
     if request.method == 'POST':
         datapoint.status = 'AUTO'
         datapoint.last_verified = timezone.now()
+        datapoint.previously_verified_data=datapoint.current_unverified_data
+        datapoint.current_verified_data=datapoint.current_unverified_data
         datapoint.save()
         messages.success(request, 'Datapoint verified successfully.')
         return redirect('datapoint-list')
