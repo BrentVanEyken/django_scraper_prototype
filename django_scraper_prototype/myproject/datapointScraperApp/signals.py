@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 #         logger.debug(f"Enqueuing scraping task for Datapoint '{instance.name}' (ID: {instance.id}).")
 #         scrape_datapoint_task.delay(instance.id)
 
-@receiver(post_save, sender=User)
-def create_or_update_user_profile(sender, instance, created, **kwargs):
-    if created:
-        UserProfile.objects.create(user=instance)
-    else:
-        instance.profile.save()
+# @receiver(post_save, sender=User)
+# def create_or_update_user_profile(sender, instance, created, **kwargs):
+#     if created:
+#         UserProfile.objects.create(user=instance)
+#     else:
+#         instance.profile.save()
