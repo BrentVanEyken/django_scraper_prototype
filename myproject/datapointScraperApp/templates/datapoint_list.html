@@ -1,8 +1,46 @@
+<!-- datapoint_list.html -->
+
 {% extends 'base.html' %}
+{% load static %}
 {% load form_tags %}
 {% load custom_filters %}
-{% load static %}
 {% block title %}Datapoint List - Data Aggregator{% endblock %}
+
+{% block extra_head %}
+    <style>
+        /* Custom styles for the resizable panels */
+        #resizer {
+            width: 5px;
+            cursor: col-resize;
+            background-color: #f1f1f1;
+        }
+        /* Spinner Styles */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        .spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+{% endblock %}
 
 {% block content %}
 <div class="container mt-5" id="datapoint_list_container">
@@ -45,7 +83,7 @@
         </div>
         
         <!-- Resizer -->
-        <div class="col-md-0 p-0" id="resizer" style="display: none;"></div>
+        <div class="col-md-0 p-0" id="resizer"></div>
         
         <!-- Datapoints Table -->
         <div class="col-md-9" id="table-panel">
@@ -55,10 +93,20 @@
                     <h5>Active Filters:</h5>
                     <ul>
                         {% if current_filters.organization %}
-                            <li><strong>Organization:</strong> <a href="{% url 'datapoint-list' %}" class="text-decoration-none">{{ organizations|get_organization_name:current_filters.organization }}</a></li>
+                            <li>
+                                <strong>Organization:</strong> 
+                                <a href="{% url 'datapoint-list' %}" class="text-decoration-none">
+                                    {{ organizations|get_organization_name:current_filters.organization }}
+                                </a>
+                            </li>
                         {% endif %}
                         {% if current_filters.status %}
-                            <li><strong>Status:</strong> <a href="{% url 'datapoint-list' %}?organization={{ current_filters.organization }}" class="text-decoration-none">{{ current_filters.status }}</a></li>
+                            <li>
+                                <strong>Status:</strong> 
+                                <a href="{% url 'datapoint-list' %}?organization={{ current_filters.organization }}" class="text-decoration-none">
+                                    {{ current_filters.status|get_status_display }}
+                                </a>
+                            </li>
                         {% endif %}
                     </ul>
                 </div>
@@ -69,42 +117,78 @@
                 <table id="datapoints-table" class="table table-striped table-hover table-bordered">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Organization</th>
-                            <th>Data Group</th>
-                            <th>URL</th>
-                            <th>XPath</th>
-                            <th>Data Type</th>
-                            <th>Verified Data</th>
-                            <th>Status</th>
-                            <th>Last Updated</th>
-                            <th>Actions</th> <!-- Actions Column -->
+                            {% if columns_to_show.0 %}
+                                <th>Name</th>
+                            {% endif %}
+                            {% if columns_to_show.1 %}
+                                <th>Organization</th>
+                            {% endif %}
+                            {% if columns_to_show.2 %}
+                                <th>Data Group</th>
+                            {% endif %}
+                            {% if columns_to_show.3 %}
+                                <th>URL</th>
+                            {% endif %}
+                            {% if columns_to_show.4 %}
+                                <th>XPath</th>
+                            {% endif %}
+                            {% if columns_to_show.5 %}
+                                <th>Data Type</th>
+                            {% endif %}
+                            {% if columns_to_show.6 %}
+                                <th>Verified Data</th>
+                            {% endif %}
+                            {% if columns_to_show.7 %}
+                                <th>Status</th>
+                            {% endif %}
+                            {% if columns_to_show.8 %}
+                                <th>Last Updated</th>
+                            {% endif %}
+                            <th class="no-order">Actions</th> <!-- Added class "no-order" -->
                         </tr>
                     </thead>
                     <tbody>
                         {% for datapoint in datapoints %}
                             <tr>
-                                <td>{{ datapoint.name }}</td>
-                                <td>{{ datapoint.organization.name }}</td>
-                                <td>
-                                    {% if datapoint.data_group %}
-                                        {{ datapoint.data_group.name }}
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
-                                </td>
-                                <td><a href="{{ datapoint.url }}" target="_blank">{{ datapoint.url }}</a></td>
-                                <td>{{ datapoint.xpath }}</td>
-                                <td>{{ datapoint.get_data_type_display }}</td>
-                                <td>{{ datapoint.current_verified_data }}</td>
-                                <td>{{ datapoint.get_status_display }}</td>
-                                <td>{{ datapoint.last_updated|date:"Y-m-d H:i" }}</td>
+                                {% if columns_to_show.0 %}
+                                    <td>{{ datapoint.name }}</td>
+                                {% endif %}
+                                {% if columns_to_show.1 %}
+                                    <td>{{ datapoint.organization.name }}</td>
+                                {% endif %}
+                                {% if columns_to_show.2 %}
+                                    <td>
+                                        {% if datapoint.data_group %}
+                                            {{ datapoint.data_group.name }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                {% endif %}
+                                {% if columns_to_show.3 %}
+                                    <td><a href="{{ datapoint.url }}" target="_blank">{{ datapoint.url }}</a></td>
+                                {% endif %}
+                                {% if columns_to_show.4 %}
+                                    <td>{{ datapoint.xpath }}</td>
+                                {% endif %}
+                                {% if columns_to_show.5 %}
+                                    <td>{{ datapoint.get_data_type_display }}</td>
+                                {% endif %}
+                                {% if columns_to_show.6 %}
+                                    <td>{{ datapoint.current_verified_data }}</td>
+                                {% endif %}
+                                {% if columns_to_show.7 %}
+                                    <td>{{ datapoint.status|get_status_display }}</td>
+                                {% endif %}
+                                {% if columns_to_show.8 %}
+                                    <td>{{ datapoint.last_updated|date:"Y-m-d H:i" }}</td>
+                                {% endif %}
                                 <td id="action_buttons_column">
                                     <!-- Detail Button -->
                                     <a href="{% url 'datapoint-detail' datapoint.id %}" class="btn btn-sm btn-info me-1" title="View Details">
                                         <i class="bi bi-eye"></i> Detail
                                     </a>
-            
+    
                                     <!-- Edit Button -->
                                     <a href="{% url 'datapoint-edit' datapoint.id %}" class="btn btn-sm btn-primary me-1" title="Edit">
                                         <i class="bi bi-pencil-square"></i> Edit

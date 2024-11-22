@@ -1,4 +1,3 @@
-// Wait for the DOM to fully load
 document.addEventListener('DOMContentLoaded', function() {
     // Handle "Scrape All Datapoints" Form Submission
     const scrapeAllForm = document.getElementById('scrape-all-form');
@@ -70,31 +69,59 @@ document.addEventListener('DOMContentLoaded', function() {
         resizer.addEventListener('mousedown', mouseDownHandler);
     }
 
-    // Initialize DataTables
-    const dataTable = $('#datapoints-table').DataTable({
+    // Initialize DataTables with Buttons and Column Visibility
+    const table = $('#datapoints-table').DataTable({
         "paging": true,
         "searching": true,
         "ordering": true,
         "order": [[8, "desc"]], // Default ordering by 'Last Updated' column
         "columnDefs": [
-            { "orderable": false, "targets": [3, 4, 5, 6] } // Disable ordering on specific columns if needed
+            { "orderable": false, "targets": '.no-order' } // Disable ordering on columns with class 'no-order'
         ],
         "lengthMenu": [10, 25, 50, 100],
-        "pageLength": 10,
+        "pageLength": 20, // Adjust as per your ListView's paginate_by
         "autoWidth": false, // Disable automatic column width calculation
         "responsive": true, // Make the table responsive
         "language": {
             "emptyTable": "No datapoints found."
+        },
+        "dom": 'Bfrtip', // Define the elements layout: Buttons, filter input, table, pagination
+        "buttons": [
+            // Removed the 'colvis' button since column visibility is handled via User Settings
+        ],
+        "initComplete": function() {
+            // Initialize colResizable after DataTables has rendered columns
+            $('#datapoints-table').colResizable({
+                liveDrag: true,
+                gripInnerHtml: "<div class='grip'></div>",
+                draggingClass: "dragging",
+                resizeMode: 'fit'
+            });
         }
     });
 
-    // Initialize colResizable after DataTables
-    $('#datapoints-table').colResizable({
-        liveDrag: true,
-        gripInnerHtml: "<div class='grip'></div>",
-        draggingClass: "dragging",
-        resizeMode: 'fit'
-    });
+    // Handle Reset Columns Button (Optional)
+    const resetColumnsButton = document.getElementById('reset-columns');
+    const liveToast = document.getElementById('liveToast');
+    const toast = new bootstrap.Toast(liveToast);
+
+    if (resetColumnsButton && table && liveToast) {
+        resetColumnsButton.addEventListener('click', function() {
+            // Reset localStorage if previously used (now handled via server-side, but keeping for completeness)
+            localStorage.removeItem('columnVisibility');
+
+            // Reset DataTables column visibility
+            table.columns().every(function(index) {
+                if ($(this.header()).hasClass('no-order')) return; // Skip 'Actions' column
+                this.visible(true);
+            });
+
+            // Show the toast
+            if (toast) {
+                toast.show();
+            }
+        });
+    }
 
     // Handle Toggle Filters Button
     const toggleFiltersButton = document.getElementById('toggle-filters');
@@ -102,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (toggleFiltersButton && filtersPanel && resizer && tablePanel) {
         toggleFiltersButton.addEventListener('click', function() {
-            const isVisible = filtersPanel.style.display !== 'none';
+            const isVisible = window.getComputedStyle(filtersPanel).display !== 'none';
             if (isVisible) {
                 // Hide Filters Panel
                 filtersPanel.style.display = 'none';
@@ -116,6 +143,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 toggleIcon.classList.remove('bi-filter-right');
                 toggleIcon.classList.add('bi-filter-left');
             }
+
+            // Adjust DataTables layout after toggling
+            table.columns.adjust().draw();
         });
     }
 });

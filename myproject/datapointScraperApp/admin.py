@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Datapoint, DataGroup, Organization
+from .models import Datapoint, DataGroup, Organization, UserProfile
 
 @admin.register(Datapoint)
 class DatapointAdmin(admin.ModelAdmin):
@@ -19,3 +19,5 @@ class OrganizationAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
     ordering = ('name',)
+
+admin.site.register(UserProfile)

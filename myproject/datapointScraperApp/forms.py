@@ -57,3 +57,38 @@ class TestXPathForm(forms.Form):
         required=True,
         initial='TXT'
     )
+
+class UserSettingsForm(forms.Form):
+    # Column Preferences
+    COLUMN_CHOICES = [
+        ('0', 'Name'),
+        ('1', 'Organization'),
+        ('2', 'Data Group'),
+        ('3', 'URL'),
+        ('4', 'XPath'),
+        ('5', 'Data Type'),
+        ('6', 'Verified Data'),
+        ('7', 'Status'),
+        ('8', 'Last Updated'),
+        # '9' is 'Actions', which we'll keep always visible
+    ]
+
+    columns = forms.MultipleChoiceField(
+        choices=COLUMN_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        initial=['0', '1', '2', '3', '4', '5', '6', '7', '8']
+    )
+
+    # Theme Preferences
+    THEME_CHOICES = [
+        ('light', 'Light'),
+        ('dark', 'Dark'),
+    ]
+
+    theme = forms.ChoiceField(
+        choices=THEME_CHOICES,
+        widget=forms.RadioSelect,
+        required=True,
+        initial='light'
+    )

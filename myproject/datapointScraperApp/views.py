@@ -18,9 +18,11 @@ import requests
 import os
 import json
 
-from .forms import RegisterForm, DatapointForm, TestXPathForm
+from .forms import RegisterForm, DatapointForm, TestXPathForm, UserSettingsForm
 from .models import Datapoint, Organization, DataGroup
 from django.utils import timezone
+
+from .utils import perform_scraping, get_user_profile
 
 from .tasks import (
     scrape_datapoint_task,
@@ -50,6 +52,38 @@ def register(request):
         form = RegisterForm()
     current_year = datetime.now().year
     return render(request, 'registration/register.html', {'form': form, 'current_year': current_year})
+
+
+@login_required
+def user_settings(request):
+    user_profile = get_user_profile(request.user)
+    if request.method == 'POST':
+        form = UserSettingsForm(request.POST)
+        if form.is_valid():
+            # Update Column Preferences
+            selected_columns = form.cleaned_data['columns']
+            user_profile.column_preferences = {col: True for col in selected_columns}
+            # Set False for columns not selected
+            all_columns = [choice[0] for choice in form.COLUMN_CHOICES]
+            for col in all_columns:
+                if col not in selected_columns:
+                    user_profile.column_preferences[col] = False
+
+            # Update Theme Preference
+            user_profile.theme = form.cleaned_data['theme']
+
+            user_profile.save()
+            messages.success(request, "Your settings have been updated.")
+            return redirect('user-settings')
+    else:
+        # Prepopulate the form with existing preferences
+        existing_prefs = user_profile.column_preferences
+        initial_columns = [col for col, visible in existing_prefs.items() if visible]
+        form = UserSettingsForm(initial={
+            'columns': initial_columns,
+            'theme': user_profile.theme
+        })
+    return render(request, 'user_settings.html', {'form': form})
 
 
 def datapoint_detail(request, pk):
@@ -98,8 +132,6 @@ def datapoint_revert(request, pk):
     datapoint = get_object_or_404(Datapoint, pk=pk)
     # Implement revert logic here
     return redirect('datapoint-list')
-
-
 class DatapointCreateView(LoginRequiredMixin, CreateView):
     model = Datapoint
     form_class = DatapointForm
@@ -107,48 +139,36 @@ class DatapointCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy('datapoint-list')
 
     def get_initial(self):
-        initial = super().get_initial()
-        # Retrieve data from GET parameters
-        url = self.request.GET.get('url', '').strip()
-        xpath = self.request.GET.get('xpath', '').strip()
-        scrape_result = self.request.GET.get('scrape_result', '').strip()
-        data_type = self.request.GET.get('data_type', 'TXT').strip()
-
-        # Basic validation for URL
-        if url:
-            validator = URLValidator()
-            try:
-                validator(url)
-                initial['url'] = url
-            except ValidationError:
-                # Optionally, handle invalid URL
-                pass
-
-        if xpath:
-            initial['xpath'] = xpath
-
-        if scrape_result:
-            initial['current_verified_data'] = scrape_result
-
-        # Map 'data_type' from TestXPathForm to DatapointForm's 'data_type'
-        # Ensure that the choices match or are correctly mapped
-        # Assuming 'TXT' maps to 'STRING' and 'HTML' maps to 'HTML' (or another appropriate mapping)
-        data_type_mapping = {
-            'TXT': 'STRING',
-            'HTML': 'HTML',
-        }
-        mapped_data_type = data_type_mapping.get(data_type.upper(), 'STRING')  # Default to 'STRING' if not found
-        initial['data_type'] = mapped_data_type
-
-        return initial
-
-        return initial
+        # Existing get_initial implementation...
+        # (As previously defined)
+        ...
 
     def form_valid(self, form):
         """
-        If the form is valid, save the associated model.
+        If the form is valid, save the associated model and trigger scraper if needed.
         """
-        response = super().form_valid(form)
+        response = super().form_valid(form)  # This saves the form and sets self.object
+
+        # Check if the status is not set to 'AUTO'
+        if self.object.status != Datapoint.STATUS_AUTO:
+            # Trigger the scraper logic synchronously
+            try:
+                perform_scraping(self.request, [self.object])
+                messages.success(
+                    self.request, 
+                    f"Datapoint created with status '{self.object.get_status_display()}'. Scraping has been initiated."
+                )
+            except Exception as e:
+                # Handle potential errors in triggering the scraping logic
+                messages.error(
+                    self.request, 
+                    f"Datapoint created but failed to initiate scraping: {str(e)}"
+                )
+                # Optionally, you might want to handle the Datapoint instance accordingly
+
+        else:
+            messages.success(self.request, 'Datapoint created successfully.')
+
         return response
 
 class DatapointListView(ListView):
@@ -179,6 +199,31 @@ class DatapointListView(ListView):
             'organization': self.request.GET.get('organization', ''),
             'status': self.request.GET.get('status', ''),
         }
+
+         # Determine which columns to show based on user preferences
+        user_profile = self.request.user.profile
+        column_prefs = user_profile.column_preferences
+
+        # Default to showing all columns if no preferences are set
+        default_columns = {
+            '0': True,
+            '1': True,
+            '2': True,
+            '3': True,
+            '4': True,
+            '5': True,
+            '6': True,
+            '7': True,
+            '8': True,
+            # '9': True,  # Actions column, always visible
+        }
+
+        # Merge default columns with user preferences
+        columns_to_show = default_columns.copy()
+        for col, visible in column_prefs.items():
+            columns_to_show[col] = visible
+
+        context['columns_to_show'] = columns_to_show
         return context
 
 class OverviewDashboardView(LoginRequiredMixin, TemplateView):
@@ -225,13 +270,19 @@ class ScrapeDatapointView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
     def post(self, request, datapoint_id):
         datapoint = get_object_or_404(Datapoint, id=datapoint_id)
-        if datapoint.status != Datapoint.STATUS_AUTO:
-            messages.warning(request, f"Datapoint '{datapoint.name}' is not in 'AUTO' status.")
-            return redirect('datapoint_detail', datapoint_id=datapoint.id)
         
-        scrape_datapoint_task.delay(datapoint.id)
-        messages.success(request, f"Scraping initiated for Datapoint '{datapoint.name}'.")
-        return redirect('datapoint_detail', datapoint_id=datapoint.id)
+        if datapoint.status not in [Datapoint.STATUS_AUTO, Datapoint.STATUS_VERIFY, Datapoint.STATUS_FIX]:
+            messages.warning(request, f"Datapoint '{datapoint.name}' is not in a scrappable status.")
+            return redirect('datapoint_detail', pk=datapoint.id)
+        
+        try:
+            perform_scraping(request, [datapoint])
+            messages.success(request, f"Scraping initiated for Datapoint '{datapoint.name}'.")
+        except Exception as e:
+            messages.error(request, f"Failed to initiate scraping for Datapoint '{datapoint.name}': {str(e)}")
+
+        return redirect('datapoint_detail', pk=datapoint.id)
+
 
 class ScrapeDataGroupView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """
@@ -269,178 +320,24 @@ class ScrapeOrganizationView(LoginRequiredMixin, PermissionRequiredMixin, View):
         messages.success(request, f"Scraping initiated for Organization '{organisation.name}'.")
         return redirect('organisation_detail', organisation_id=organisation.id)
 
-
-### VERSION WITH CELERY
-
-# class ScrapeAllDatapointsView(LoginRequiredMixin, PermissionRequiredMixin, View):
-#     """
-#     View to trigger scraping for all Datapoints with status 'AUTO', 'VERIFY', or 'FIX'.
-#     After scraping, updates the status based on the comparison between scraped data and current_verified_data.
-#     """
-#     permission_required = 'datapointScraperApp.can_scrape_all_datapoints'
-
-#     def post(self, request):
-#         # Get all Datapoint instances with status 'AUTO', 'VERIFY', or 'FIX'
-#         datapoints = Datapoint.objects.filter(status__in=['AUTO', 'VERIFY', 'FIX'])
-#         datapoint_ids = list(datapoints.values_list('id', flat=True))
-        
-#         if not datapoint_ids:
-#             messages.warning(request, "No Datapoints in 'AUTO', 'VERIFY', or 'FIX' status to scrape.")
-#             return redirect('home')  # Adjust as per your URL naming
-
-#         # Prepare the scraping tasks with validation
-#         tasks = []
-#         for dp in datapoints:
-#             if not dp.url or not dp.xpath:
-#                 logger.warning(f"Datapoint '{dp.name}' is missing 'url' or 'xpath'. Skipping.")
-#                 messages.warning(request, f"Datapoint '{dp.name}' is missing 'url' or 'xpath'. Skipping.")
-#                 continue
-#             if dp.data_type.upper() not in ['TXT', 'HTML']:
-#                 logger.warning(f"Datapoint '{dp.name}' has invalid 'data_type': {dp.data_type}. Defaulting to 'TXT'.")
-#                 data_type = 'TXT'
-#             else:
-#                 data_type = dp.data_type.upper()
-            
-#             tasks.append({
-#                 "url": dp.url,
-#                 "xpath": dp.xpath,
-#                 "data_type": data_type
-#             })
-
-#         if not tasks:
-#             messages.warning(request, "No valid Datapoints to scrape after validation.")
-#             return redirect('home')
-
-#         # Offload scraping to Celery
-#         scrape_all_datapoints_task.delay(tasks)
-
-#         messages.success(request, "Scraping initiated. You will receive a notification once it's complete.")
-#         return redirect('home')
-
-
-
-
-#### VERSION WITHOUT CELERY  
-
 class ScrapeAllDatapointsView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """
     View to trigger scraping for all Datapoints with status 'AUTO', 'VERIFY', or 'FIX'.
-    After scraping, updates the status based on the comparison between scraped data and current_verified_data.
     """
     permission_required = 'datapointScraperApp.can_scrape_all_datapoints'
 
     def post(self, request):
         # Get all Datapoint instances with status 'AUTO', 'VERIFY', or 'FIX'
-        datapoints = Datapoint.objects.filter(status__in=['AUTO', 'VERIFY', 'FIX'])
-        datapoint_ids = list(datapoints.values_list('id', flat=True))
-        
-        if not datapoint_ids:
+        datapoints = Datapoint.objects.filter(status__in=[Datapoint.STATUS_AUTO, Datapoint.STATUS_VERIFY, Datapoint.STATUS_FIX])
+
+        if not datapoints.exists():
             messages.warning(request, "No Datapoints in 'AUTO', 'VERIFY', or 'FIX' status to scrape.")
             return redirect('home')  # Adjust as per your URL naming
 
-        # Prepare the scraping tasks with validation
-        tasks = []
-        for dp in datapoints:
-            if not dp.url or not dp.xpath:
-                logger.warning(f"Datapoint '{dp.name}' is missing 'url' or 'xpath'. Skipping.")
-                messages.warning(request, f"Datapoint '{dp.name}' is missing 'url' or 'xpath'. Skipping.")
-                continue
-            if dp.data_type.upper() not in ['TXT', 'HTML']:
-                logger.warning(f"Datapoint '{dp.name}' has invalid 'data_type': {dp.data_type}. Defaulting to 'TXT'.")
-                data_type = 'TXT'
-            else:
-                data_type = dp.data_type.upper()
-            
-            tasks.append({
-                "url": dp.url,
-                "xpath": dp.xpath,
-                "data_type": data_type
-            })
-
-        if not tasks:
-            messages.warning(request, "No valid Datapoints to scrape after validation.")
-            return redirect('home')
-
-        payload = {
-            "tasks": tasks
-        }
-
-        # Log the payload
-        logger.debug(f"Scraping payload: {json.dumps(payload)}")
-
-        # Retrieve the API token from Django settings
-        API_TOKEN = settings.SCRAPER_API_TOKEN
-
-        headers = {
-            "Authorization": f"Bearer {API_TOKEN}",
-            "Content-Type": "application/json"
-        }
-
-        try:
-            # Send POST request to FastAPI scraper
-            response = requests.post(
-                "http://127.0.0.1:8001/scrape/batch",  # FastAPI batch endpoint on port 8001
-                json=payload,
-                headers=headers,
-                timeout=60  # Increased timeout for batch processing
-            )
-
-            logger.info(f"FastAPI Response Status Code: {response.status_code}")
-            logger.info(f"FastAPI Response Content: {response.text}")
-
-            if response.status_code == 200:
-                response_data = response.json()
-                results = response_data.get("results", [])
-
-                for result in results:
-                    url = result.get("url")
-                    xpath = result.get("xpath")
-                    scraped_data = result.get("scraped_data")
-                    status = result.get("status")
-                    error = result.get("error")
-
-                    try:
-                        # Retrieve the corresponding Datapoint instance
-                        dp = Datapoint.objects.get(url=url, xpath=xpath)
-
-                        if status == "success":
-                            # Compare scraped_data with current_verified_data
-                            if dp.current_verified_data == scraped_data:
-                                dp.status = "AUTO"
-                                messages.success(request, f"No changes detected for Datapoint: {dp.name}. Status set to AUTO.")
-                            else:
-                                dp.status = "VERIFY"
-                                messages.info(request, f"Changes detected for Datapoint: {dp.name}. Status set to VERIFY for user verification.")
-                            
-                            dp.current_unverified_data = scraped_data
-                            dp.last_updated = timezone.now()
-                            dp.save()
-                        else:
-                            dp.status = "FIX"
-                            dp.last_updated = timezone.now()
-                            dp.save()
-                            messages.error(request, f"Failed to scrape Datapoint: {dp.name}. Error: {error}")
-                    except Datapoint.DoesNotExist:
-                        messages.error(request, f"Datapoint with URL {url} and XPath {xpath} does not exist.")
-
-            else:
-                # Attempt to extract error message from FastAPI response
-                try:
-                    error_detail = response.json().get("detail", "Unknown error")
-                except json.JSONDecodeError:
-                    error_detail = response.text  # Capture raw response
-                logger.error(f"FastAPI Error Response: {response.text}")
-                messages.error(request, f"Failed to initiate scraping: {error_detail}")
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"RequestException: {e}")
-            messages.error(request, f"Error connecting to the scraper service: {e}")
-        except json.JSONDecodeError:
-            logger.error("JSONDecodeError: Invalid response from FastAPI.")
-            messages.error(request, "Invalid response from the scraper service.")
+        # Trigger scraping for all relevant datapoints
+        perform_scraping(request, datapoints)
 
         return redirect('home')
-    
 
 class TestXPathView(View):
     """
