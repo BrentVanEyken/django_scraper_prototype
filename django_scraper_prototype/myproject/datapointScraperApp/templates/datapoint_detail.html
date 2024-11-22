@@ -22,7 +22,9 @@
             <p><strong>URL:</strong> <a href="{{ datapoint.url }}" target="_blank">{{ datapoint.url }}</a></p>
             <p><strong>XPath:</strong> {{ datapoint.xpath }}</p>
             <p><strong>Data Type:</strong> {{ datapoint.get_data_type_display }}</p>
+            <p><strong>previously verified Data:</strong> {{ datapoint.previously_verified_data }}</p>
             <p><strong>Verified Data:</strong> {{ datapoint.current_verified_data }}</p>
+            <p><strong>Unverified Data:</strong> {{ datapoint.current_unverified_data }}</p>
             <p><strong>Status:</strong> {{ datapoint.get_status_display }}</p>
             <p><strong>Last Verified:</strong> 
                 {% if datapoint.last_verified %}
