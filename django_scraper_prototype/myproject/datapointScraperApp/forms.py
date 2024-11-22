@@ -68,16 +68,17 @@ class UserSettingsForm(forms.Form):
         ('4', 'XPath'),
         ('5', 'Data Type'),
         ('6', 'Verified Data'),
-        ('7', 'Status'),
-        ('8', 'Last Updated'),
-        # '9' is 'Actions', which we'll keep always visible
+        ('7', 'Unverified Data'),
+        ('8', 'Status'),
+        ('9', 'Last Updated'),
+        # '10' is 'Actions', which we'll keep always visible
     ]
 
     columns = forms.MultipleChoiceField(
         choices=COLUMN_CHOICES,
         widget=forms.CheckboxSelectMultiple,
         required=False,
-        initial=['0', '1', '2', '3', '4', '5', '6', '7', '8']
+        initial=['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
     )
 
     # Theme Preferences

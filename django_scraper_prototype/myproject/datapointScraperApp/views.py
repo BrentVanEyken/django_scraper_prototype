@@ -241,7 +241,8 @@ class DatapointListView(ListView):
             '6': True,
             '7': True,
             '8': True,
-            # '9': True,  # Actions column, always visible
+            '9': True,
+            # '10': True,  # Actions column, always visible
         }
 
         # Merge default columns with user preferences

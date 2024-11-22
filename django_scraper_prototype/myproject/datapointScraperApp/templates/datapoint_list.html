@@ -139,9 +139,12 @@
                                 <th>Verified Data</th>
                             {% endif %}
                             {% if columns_to_show.7 %}
-                                <th>Status</th>
+                                <th>Unverified Data</th>
                             {% endif %}
                             {% if columns_to_show.8 %}
+                                <th>Status</th>
+                            {% endif %}
+                            {% if columns_to_show.9 %}
                                 <th>Last Updated</th>
                             {% endif %}
                             <th class="no-order">Actions</th> <!-- Added class "no-order" -->
@@ -178,9 +181,12 @@
                                     <td>{{ datapoint.current_verified_data }}</td>
                                 {% endif %}
                                 {% if columns_to_show.7 %}
-                                    <td>{{ datapoint.status|get_status_display }}</td>
+                                    <td>{{ datapoint.current_unverified_data }}</td>
                                 {% endif %}
                                 {% if columns_to_show.8 %}
+                                    <td>{{ datapoint.status|get_status_display }}</td>
+                                {% endif %}
+                                {% if columns_to_show.9 %}
                                     <td>{{ datapoint.last_updated|date:"Y-m-d H:i" }}</td>
                                 {% endif %}
                                 <td id="action_buttons_column">
