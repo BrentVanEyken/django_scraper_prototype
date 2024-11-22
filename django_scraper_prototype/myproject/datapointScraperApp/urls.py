@@ -6,6 +6,8 @@ urlpatterns = [
     path('register/', views.register, name='register'),
     path('settings/', views.user_settings, name='user-settings'),
 
+    path('testPage/', views.testPage, name='testPage'),
+
     path('datapoints/create/', views.DatapointCreateView.as_view(), name='datapoint-create'),
     path('datapoints/', views.DatapointListView.as_view(), name='datapoint-list'),
     path('datapoints/<int:datapoint_id>/scrape/', views.ScrapeDatapointView.as_view(), name='scrape_datapoint'),

@@ -47,6 +47,9 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
+                            <a class="nav-link" href="{% url 'testPage' %}">TestPage</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'test_xpath' %}">Test XPath</a>
                         </li>
                         <li class="nav-item">

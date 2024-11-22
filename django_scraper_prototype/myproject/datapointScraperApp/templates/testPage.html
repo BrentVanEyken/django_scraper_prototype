@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}TestPage{% endblock %}
+
+{% block content %}
+<div class="jumbotron text-center">
+    <h1 class="display-4">Welcome to the Test Page, {{ user.username }}!</h1>
+    <!-- _____UPDATE BELOW_______-->
+
+
+    <p id="testPageIndicator" class="lead" style="font-size: 80px; color: #007bff;">8</p> 
+
+
+    <!-- _____UPDATE ABOVE_______-->
+
+    <hr class="my-4">
+    <p>Discover what we’ve built and explore the possibilities.</p>
+    <a class="btn btn-primary btn-lg" href="#" role="button">Learn more</a>
+</div>
+
+<div class="container mt-5">
+    <!-- Features Section -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Feature 1</h5>
+                    <p class="card-text">A brief description of feature 1 and how it benefits users.</p>
+                    <a href="#" class="btn btn-outline-primary">Read more</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Feature 2</h5>
+                    <p class="card-text">A brief description of feature 2 and how it simplifies tasks.</p>
+                    <a href="#" class="btn btn-outline-primary">Read more</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Feature 3</h5>
+                    <p class="card-text">A brief description of feature 3 and its unique advantages.</p>
+                    <a href="#" class="btn btn-outline-primary">Read more</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Content Section -->
+<section class="bg-light py-5">
+    <div class="container">
+        <h2 class="text-center mb-4">Why Choose Us?</h2>
+        <p class="text-center">We provide cutting-edge solutions tailored to your needs.</p>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h4>Innovative Approach</h4>
+                <p>Our strategies are built to solve problems efficiently with a focus on innovation and user satisfaction.</p>
+            </div>
+            <div class="col-md-6">
+                <h4>Unparalleled Support</h4>
+                <p>Our team is available 24/7 to ensure your experience is seamless and enjoyable.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials -->
+<div class="container my-5">
+    <h3 class="text-center">What People Say</h3>
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <blockquote class="blockquote text-center">
+                <p class="mb-0">“Amazing platform, it exceeded all my expectations!”</p>
+            </blockquote>
+        </div>
+        <div class="col-md-4">
+            <blockquote class="blockquote text-center">
+                <p class="mb-0">“The best tool I've ever used for this purpose.”</p>
+            </blockquote>
+        </div>
+        <div class="col-md-4">
+            <blockquote class="blockquote text-center">
+                <p class="mb-0">“Highly recommended for anyone looking to improve productivity.”</p>
+            </blockquote>
+        </div>
+    </div>
+</div>
+</footer>
+{% endblock %}

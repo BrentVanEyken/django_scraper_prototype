@@ -31,6 +31,11 @@ def home(request):
     current_year = datetime.now().year
     return render(request, 'home.html', {'current_year': current_year})
 
+@login_required
+def testPage(request):
+    current_year = datetime.now().year
+    return render(request, 'testPage.html', {'current_year': current_year})
+
 def register(request):
     if request.method == 'POST':
         form = RegisterForm(request.POST)
