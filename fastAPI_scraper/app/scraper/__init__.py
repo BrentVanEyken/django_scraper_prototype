@@ -18,14 +18,14 @@ def get_page(url: str, wait_xpath: Optional[str] = None) -> html.HtmlElement:
             browser = p.chromium.launch(headless=True)
             context = browser.new_context()
             page = context.new_page()
-            page.goto(url, timeout=13000)
+            page.goto(url, timeout=15000)
 
             if wait_xpath:
                 # Wait for the element matching the XPath to be visible
-                page.wait_for_selector(f'xpath={wait_xpath}', timeout=13000)
+                page.wait_for_selector(f'xpath={wait_xpath}', timeout=15000)
             else:
                 # Wait for the network to be idle
-                page.wait_for_load_state('networkidle', timeout=13000)
+                page.wait_for_load_state('networkidle', timeout=15000)
 
             content = page.content()
             tree = html.fromstring(content)

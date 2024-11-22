@@ -24,13 +24,6 @@ from django.utils import timezone
 
 from .utils import perform_scraping, get_user_profile
 
-from .tasks import (
-    scrape_datapoint_task,
-    scrape_datagroup_task,
-    scrape_organisation_task,
-    scrape_all_datapoints_task,
-)
-
 logger = logging.getLogger(__name__)
 
 @login_required
@@ -132,6 +125,7 @@ def datapoint_revert(request, pk):
     datapoint = get_object_or_404(Datapoint, pk=pk)
     # Implement revert logic here
     return redirect('datapoint-list')
+
 class DatapointCreateView(LoginRequiredMixin, CreateView):
     model = Datapoint
     form_class = DatapointForm
@@ -139,9 +133,35 @@ class DatapointCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy('datapoint-list')
 
     def get_initial(self):
-        # Existing get_initial implementation...
-        # (As previously defined)
-        ...
+        initial = super().get_initial()
+        # Retrieve data from GET parameters
+        url = self.request.GET.get('url', '').strip()
+        xpath = self.request.GET.get('xpath', '').strip()
+        scrape_result = self.request.GET.get('scrape_result', '').strip()
+        data_type = self.request.GET.get('data_type', 'TXT').strip()
+        # Basic validation for URL
+        if url:
+            validator = URLValidator()
+            try:
+                validator(url)
+                initial['url'] = url
+            except ValidationError:
+                # Optionally, handle invalid URL
+                pass
+        if xpath:
+            initial['xpath'] = xpath
+        if scrape_result:
+            initial['current_verified_data'] = scrape_result
+        # Map 'data_type' from TestXPathForm to DatapointForm's 'data_type'
+        # Ensure that the choices match or are correctly mapped
+        # Assuming 'TXT' maps to 'STRING' and 'HTML' maps to 'HTML' (or another appropriate mapping)
+        data_type_mapping = {
+            'TXT': 'STRING',
+            'HTML': 'HTML',
+        }
+        mapped_data_type = data_type_mapping.get(data_type.upper(), 'STRING')  # Default to 'STRING' if not found
+        initial['data_type'] = mapped_data_type
+        return initial
 
     def form_valid(self, form):
         """
@@ -149,25 +169,27 @@ class DatapointCreateView(LoginRequiredMixin, CreateView):
         """
         response = super().form_valid(form)  # This saves the form and sets self.object
 
-        # Check if the status is not set to 'AUTO'
-        if self.object.status != Datapoint.STATUS_AUTO:
-            # Trigger the scraper logic synchronously
-            try:
-                perform_scraping(self.request, [self.object])
-                messages.success(
-                    self.request, 
-                    f"Datapoint created with status '{self.object.get_status_display()}'. Scraping has been initiated."
-                )
-            except Exception as e:
-                # Handle potential errors in triggering the scraping logic
-                messages.error(
-                    self.request, 
-                    f"Datapoint created but failed to initiate scraping: {str(e)}"
-                )
-                # Optionally, you might want to handle the Datapoint instance accordingly
+        # # Check if the status is not set to 'AUTO'
+        # if self.object.status != Datapoint.STATUS_AUTO:
+        #     # Trigger the scraper logic synchronously
+        #     try:
+        #         perform_scraping(self.request, [self.object])
+        #         messages.success(
+        #             self.request, 
+        #             f"Datapoint created with status '{self.object.get_status_display()}'. Scraping has been initiated."
+        #         )
+        #     except Exception as e:
+        #         # Handle potential errors in triggering the scraping logic
+        #         messages.error(
+        #             self.request, 
+        #             f"Datapoint created but failed to initiate scraping: {str(e)}"
+        #         )
+        #         # Optionally, you might want to handle the Datapoint instance accordingly
 
-        else:
-            messages.success(self.request, 'Datapoint created successfully.')
+        # else:
+        #     messages.success(self.request, 'Datapoint created successfully.')
+
+        messages.success(self.request, 'Datapoint created successfully.')
 
         return response
 
@@ -284,41 +306,41 @@ class ScrapeDatapointView(LoginRequiredMixin, PermissionRequiredMixin, View):
         return redirect('datapoint_detail', pk=datapoint.id)
 
 
-class ScrapeDataGroupView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    """
-    View to trigger scraping for a specific DataGroup.
-    """
-    permission_required = 'datapointScraperApp.can_scrape_datagroup'  # Define appropriate permission
+# class ScrapeDataGroupView(LoginRequiredMixin, PermissionRequiredMixin, View):
+#     """
+#     View to trigger scraping for a specific DataGroup.
+#     """
+#     permission_required = 'datapointScraperApp.can_scrape_datagroup'  # Define appropriate permission
 
-    def post(self, request, datagroup_id):
-        datagroup = get_object_or_404(DataGroup, id=datagroup_id)
-        # Optionally, check if any Datapoints are in 'AUTO' status
-        auto_datapoints = datagroup.datapoints.filter(status=Datapoint.STATUS_AUTO)
-        if not auto_datapoints.exists():
-            messages.warning(request, f"No Datapoints in DataGroup '{datagroup.name}' are in 'AUTO' status.")
-            return redirect('datagroup_detail', datagroup_id=datagroup.id)
+#     def post(self, request, datagroup_id):
+#         datagroup = get_object_or_404(DataGroup, id=datagroup_id)
+#         # Optionally, check if any Datapoints are in 'AUTO' status
+#         auto_datapoints = datagroup.datapoints.filter(status=Datapoint.STATUS_AUTO)
+#         if not auto_datapoints.exists():
+#             messages.warning(request, f"No Datapoints in DataGroup '{datagroup.name}' are in 'AUTO' status.")
+#             return redirect('datagroup_detail', datagroup_id=datagroup.id)
         
-        scrape_datagroup_task.delay(datagroup.id)
-        messages.success(request, f"Scraping initiated for DataGroup '{datagroup.name}'.")
-        return redirect('datagroup_detail', datagroup_id=datagroup.id)
+#         scrape_datagroup_task.delay(datagroup.id)
+#         messages.success(request, f"Scraping initiated for DataGroup '{datagroup.name}'.")
+#         return redirect('datagroup_detail', datagroup_id=datagroup.id)
 
-class ScrapeOrganizationView(LoginRequiredMixin, PermissionRequiredMixin, View):
-    """
-    View to trigger scraping for a specific Organization.
-    """
-    permission_required = 'datapointScraperApp.can_scrape_organisation'  # Define appropriate permission
+# class ScrapeOrganizationView(LoginRequiredMixin, PermissionRequiredMixin, View):
+#     """
+#     View to trigger scraping for a specific Organization.
+#     """
+#     permission_required = 'datapointScraperApp.can_scrape_organisation'  # Define appropriate permission
 
-    def post(self, request, organisation_id):
-        organisation = get_object_or_404(Organization, id=organisation_id)
-        # Optionally, check if any Datapoints are in 'AUTO' status
-        auto_datapoints = organisation.datapoints.filter(status=Datapoint.STATUS_AUTO)
-        if not auto_datapoints.exists():
-            messages.warning(request, f"No Datapoints in Organization '{organisation.name}' are in 'AUTO' status.")
-            return redirect('organisation_detail', organisation_id=organisation.id)
+#     def post(self, request, organisation_id):
+#         organisation = get_object_or_404(Organization, id=organisation_id)
+#         # Optionally, check if any Datapoints are in 'AUTO' status
+#         auto_datapoints = organisation.datapoints.filter(status=Datapoint.STATUS_AUTO)
+#         if not auto_datapoints.exists():
+#             messages.warning(request, f"No Datapoints in Organization '{organisation.name}' are in 'AUTO' status.")
+#             return redirect('organisation_detail', organisation_id=organisation.id)
         
-        scrape_organisation_task.delay(organisation.id)
-        messages.success(request, f"Scraping initiated for Organization '{organisation.name}'.")
-        return redirect('organisation_detail', organisation_id=organisation.id)
+#         scrape_organisation_task.delay(organisation.id)
+#         messages.success(request, f"Scraping initiated for Organization '{organisation.name}'.")
+#         return redirect('organisation_detail', organisation_id=organisation.id)
 
 class ScrapeAllDatapointsView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """
